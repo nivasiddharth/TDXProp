@@ -231,8 +231,7 @@ reference assertion list):
 | Standard RAG   | 17        | 27          | 15    | 33               | 92    |
 | TDXProp        | 28        | 32          | 31    | 24               | 115   |
 
-we have also contains the aggregated figures referenced in the paper, comparing **LLM Only**, **Standard RAG**, and **TDXProp** across all
-four domains:
+we have also contains the aggregated figures referenced in the paper, comparing **LLM Only**, **Standard RAG**, and **TDXProp** across SEPT&PAMT domains:
 - **`retrieval_latency.png`** — TDXProp's multi-query expansion increases
   retrieval latency relative to Standard RAG, as expected from issuing five
   reformulated queries instead of one.
