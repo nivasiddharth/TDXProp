@@ -38,8 +38,7 @@ the arithmetic mean of the two runs unless stated otherwise.
     ├── retrieval_latency.png            # Retrieval latency: LLM vs RAG vs TDXProp
     ├── total_latency.png                # End-to-end latency: LLM vs RAG vs TDXProp
     ├── token_usage.png                  # Input/output token usage per configuration
-    ├── specificity_faithfulness.png     # Technical specificity & faithfulness scores
-    └── property_generation_table.tex    # Property generation counts per domain (LaTeX)
+    ├── specificity_faithfulness.png     # Technical specificity & faithfulness score
 ```
 
 > The `llmandstandardrag*.py` scripts bundle **two** experiments each: pass
