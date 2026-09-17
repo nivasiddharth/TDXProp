@@ -1,8 +1,22 @@
-# TDXProp — Query-Expanded RAG for Intel TDX Security Property Extraction
+# TDXProp: Hardware-Aware Retrieval for Security Property Generation and Coverage Analysis in Intel TDX
+**TDXProp** uses retrieval-augmented generation to produce TDX security
+properties directly from specification text, without a hand-built formal
+model or RTL. It answers a user query about a TDX security objective in two
+phases:
 
-This repository contains the experimental pipeline and results for an ablation
-study comparing three configurations for extracting missing security
-verification properties from Intel TDX specification documents:
+- **Offline phase** — builds a *TDX Security Knowledge Base* (KB) once, by
+  extracting, chunking, and embedding the specification corpus into a
+  searchable index.
+- **Online phase** — for each query, expands it into multiple
+  reformulations, retrieves supporting evidence from the KB, and generates a
+  candidate property from that evidence.
+
+A final **Coverage Analysis** step aggregates properties across queries,
+measuring taxonomy coverage at both the retrieval and generation stages.
+
+This repository contains the experimental pipeline and results for an
+ablation study comparing three configurations for extracting missing
+security verification properties from Intel TDX specification documents:
 
 - **LLM Only** — direct generation, no retrieval.
 - **Standard RAG** — single-query, paragraph-level retrieval.
@@ -38,7 +52,8 @@ the arithmetic mean of the two runs unless stated otherwise.
     ├── retrieval_latency.png            # Retrieval latency: LLM vs RAG vs TDXProp
     ├── total_latency.png                # End-to-end latency: LLM vs RAG vs TDXProp
     ├── token_usage.png                  # Input/output token usage per configuration
-    ├── specificity_faithfulness.png     # Technical specificity & faithfulness score
+    ├── specificity_faithfulness.png     # Technical specificity & faithfulness scores
+    └── property_generation_table.tex    # Property generation counts per domain (LaTeX)
 ```
 
 > The `llmandstandardrag*.py` scripts bundle **two** experiments each: pass
@@ -48,29 +63,40 @@ the arithmetic mean of the two runs unless stated otherwise.
 
 ## Pipeline overview
 
-Each script performs the same end-to-end steps for its domain:
+Each script implements the offline/online pipeline described above for its
+domain:
+
+**Offline phase — build the TDX Security Knowledge Base (KB)**
 
 1. **Document ingestion** — parses Intel TDX specification PDFs with PyMuPDF
    (`fitz`) and splits them into paragraph-level chunks (600–1200 tokens,
    20% overlap), tokenized with `tiktoken`.
 2. **Indexing** — embeds chunks with `text-embedding-3-large` (3072 dims) via
    `langchain-openai` and stores them in a local Chroma vector store
-   (`langchain-chroma` / `chromadb`), cached under `./vectorstore*` with an
-   `index_metadata.json` fingerprint so re-runs skip re-embedding unless
-   `--force_rebuild` is passed.
-3. **Retrieval** — depending on configuration:
+   (`langchain-chroma` / `chromadb`), forming the searchable KB. The index is
+   cached under `./vectorstore*` with an `index_metadata.json` fingerprint so
+   re-runs skip re-embedding unless `--force_rebuild` is passed.
+
+**Online phase — per-query retrieval and generation**
+
+3. **Query expansion & retrieval** — depending on configuration:
    - *LLM Only*: no retrieval; the model answers from the query alone.
-   - *Standard RAG*: single similarity search against the vector store.
-   - *TDXProp*: the same retrieval, run against five generic reformulations
-     of the query, with results merged into a fixed-size context window
-     (`RERANKER_TOP_N` / `TOP_N_CHUNKS` chunks).
-4. **Generation** — an OpenAI chat model (`gpt-5.5` by default) generates the
-   missing security verification properties for the domain, grounded in the
-   retrieved context (where applicable) and a fixed prompt template.
+   - *Standard RAG*: a single similarity search against the KB.
+   - *TDXProp*: the query is expanded into five generic reformulations, each
+     retrieved against the KB, with results merged into a fixed-size context
+     window (`RERANKER_TOP_N` / `TOP_N_CHUNKS` chunks).
+4. **Generation** — an OpenAI chat model (`gpt-5.5` by default) generates a
+   candidate security verification property for the domain, grounded in the
+   retrieved evidence (where applicable) and a fixed prompt template.
+
+**Coverage Analysis — aggregation across queries**
+
 5. **Evaluation** — code-native metrics (latency, token usage/cost,
    redundancy, technical specificity, strict coverage, novelty) plus
    LLM-judged **Faithfulness** / **Factual Correctness** via
-   [`ragas`](https://github.com/explodinggradients/ragas).
+   [`ragas`](https://github.com/explodinggradients/ragas). Properties
+   generated across queries are aggregated to measure taxonomy coverage at
+   both the retrieval and generation stages.
 6. **Output** — each run writes the generated properties (`.txt`), the
    retrieval log (`.json`), and a metrics report (`.json`) to `--output_dir`.
 
